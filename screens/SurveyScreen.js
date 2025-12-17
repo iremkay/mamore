@@ -1,0 +1,194 @@
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { deriveProfileType } from '../utils/profileEngine';
+import { saveProfile } from '../utils/storage';
+
+const OPTIONS = {
+  activity: [
+    { key: 'cafe', label: '☕ Kafe keşfetmek' },
+    { key: 'food', label: '🍽️ Yemek avı' },
+    { key: 'museum', label: '🎨 Müze / sergi / tarih' },
+    { key: 'nature', label: '🌿 Doğa / sahil' },
+    { key: 'games', label: '🎮 Oyun / eğlence' },
+    { key: 'shopping', label: '🛍️ Alışveriş / pazarlar' },
+  ],
+  vibe: [
+    { key: 'quiet', label: '😌 Sessiz & sakin' },
+    { key: 'medium', label: '🙂 Orta, tatlı kalabalık' },
+    { key: 'crowded', label: '🔥 Kalabalık & hareketli' },
+  ],
+  budget: [
+    { key: 'budget', label: '💰 Uygun fiyatlı' },
+    { key: 'moderate', label: '💵 Orta fiyat' },
+    { key: 'premium', label: '💎 Premium / lüks' },
+  ],
+  food: [
+    { key: 'coffee', label: '☕ Kahve ağırlıklı' },
+    { key: 'dessert', label: '🍰 Tatlı odaklı' },
+    { key: 'local', label: '🥘 Türk mutfağı' },
+    { key: 'world', label: '🌍 Dünya mutfağı' },
+    { key: 'healthy', label: '🥗 Sağlıklı / vegan' },
+  ],
+  weather: [
+    { key: 'indoor', label: '🏠 Kapalı alanlar' },
+    { key: 'outdoor', label: '☀️ Açık hava' },
+    { key: 'both', label: '🌤️ Duruma göre' },
+  ],
+  group: [
+    { key: 'solo', label: '🧘 Solo / kişisel' },
+    { key: 'couple', label: '👫 Çift' },
+    { key: 'friends', label: '👥 Arkadaş grubu' },
+    { key: 'family', label: '👨‍👩‍👧 Aile' },
+  ],
+  interests: [
+    { key: 'art', label: '🎭 Sanat' },
+    { key: 'books', label: '📚 Kitap / sahaf' },
+    { key: 'outdoor', label: '🌿 Outdoor' },
+    { key: 'coffee', label: '☕ Kahve' },
+    { key: 'food', label: '🍽️ Yemek' },
+    { key: 'games', label: '🎮 Oyun' },
+    { key: 'photography', label: '📸 Fotoğrafçılık' },
+    { key: 'music', label: '🎵 Müzik / konser' },
+    { key: 'fashion', label: '👗 Moda / style' },
+    { key: 'sports', label: '⚽ Spor' },
+  ],
+};
+
+export default function SurveyScreen({ navigation }) {
+  const [activity, setActivity] = useState(null);
+  const [vibe, setVibe] = useState(null);
+  const [budget, setBudget] = useState(null);
+  const [food, setFood] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [group, setGroup] = useState(null);
+  const [interests, setInterests] = useState([]);
+
+  const isComplete = activity && vibe && budget && food && weather && group;
+
+  const answers = useMemo(
+    () => ({ activity, vibe, budget, food, weather, group, interests }),
+    [activity, vibe, budget, food, weather, group, interests]
+  );
+
+  const toggleInterest = (key) => {
+    setInterests((prev) => (prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]));
+  };
+
+  const onFinish = async () => {
+    if (!isComplete) return;
+
+    const derived = deriveProfileType(answers);
+    const profile = {
+      ...answers,
+      ...derived,
+      createdAt: new Date().toISOString(),
+    };
+
+    await saveProfile(profile);
+    navigation.getParent().navigate('AppTabs', { screen: 'Home' });
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Seni tanıyıp “profil tipi” çıkaralım ✨</Text>
+
+      <Block title="1) Ne yapmayı daha çok seversin?">
+        {OPTIONS.activity.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={activity === opt.key} onPress={() => setActivity(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="2) Ortam tercihin?">
+        {OPTIONS.vibe.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={vibe === opt.key} onPress={() => setVibe(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="3) Bütçe tercihin?">
+        {OPTIONS.budget.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={budget === opt.key} onPress={() => setBudget(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="4) Damak zevkin?">
+        {OPTIONS.food.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={food === opt.key} onPress={() => setFood(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="5) Hava durumuna göre tercihin?">
+        {OPTIONS.weather.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={weather === opt.key} onPress={() => setWeather(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="6) Kimlerle gezmeyi seviyorsun?">
+        {OPTIONS.group.map(opt => (
+          <Option key={opt.key} label={opt.label} selected={group === opt.key} onPress={() => setGroup(opt.key)} />
+        ))}
+      </Block>
+
+      <Block title="7) İlgi alanların (birden fazla seçebilirsin)">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {OPTIONS.interests.map(opt => (
+            <Chip key={opt.key} label={opt.label} selected={interests.includes(opt.key)} onPress={() => toggleInterest(opt.key)} />
+          ))}
+        </View>
+      </Block>
+
+      <TouchableOpacity
+        style={[styles.button, !isComplete && styles.buttonDisabled]}
+        onPress={onFinish}
+        disabled={!isComplete}
+      >
+        <Text style={styles.buttonText}>{isComplete ? 'Profilimi Oluştur' : 'Önce tüm soruları seç 😊'}</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>Profil ekranın da otomatik oluşacak 😌</Text>
+    </ScrollView>
+  );
+}
+
+function Block({ title, children }) {
+  return (
+    <View style={styles.block}>
+      <Text style={styles.blockTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+function Option({ label, selected, onPress }) {
+  return (
+    <TouchableOpacity style={[styles.option, selected && styles.optionSelected]} onPress={onPress}>
+      <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Chip({ label, selected, onPress }) {
+  return (
+    <TouchableOpacity style={[styles.chip, selected && styles.chipSelected]} onPress={onPress}>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 16, paddingBottom: 34, backgroundColor: '#fff' },
+  title: { fontSize: 18, fontWeight: '900', color: '#111827', textAlign: 'center', marginBottom: 14 },
+  block: { marginBottom: 14 },
+  blockTitle: { fontSize: 15, fontWeight: '800', color: '#374151', marginBottom: 8 },
+  option: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  optionSelected: { backgroundColor: '#fed7aa', borderColor: '#fb923c' },
+  optionText: { color: '#4b5563', fontSize: 14 },
+  optionTextSelected: { color: '#7c2d12', fontWeight: '900' },
+  chip: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb' },
+  chipSelected: { backgroundColor: '#ffedd5', borderColor: '#fb923c' },
+  chipText: { fontSize: 12, color: '#374151' },
+  chipTextSelected: { fontWeight: '900', color: '#7c2d12' },
+  button: { marginTop: 8, backgroundColor: '#f97316', paddingVertical: 14, borderRadius: 999, alignItems: 'center' },
+  buttonDisabled: { opacity: 0.55 },
+  buttonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  hint: { marginTop: 10, fontSize: 12, color: '#6b7280', textAlign: 'center' },
+});
