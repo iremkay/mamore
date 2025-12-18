@@ -10,6 +10,7 @@ import SurveyScreen from './screens/SurveyScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import MapScreen from './screens/MapScreen';
+import RouteScreen from './screens/RouteScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -25,6 +26,29 @@ const WelcomeStack = () => {
     >
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ title: 'Hoş Geldin', headerShown: true }} />
       <Stack.Screen name="Survey" component={SurveyScreen} options={{ title: 'Seni Tanıyalım' }} />
+    </Stack.Navigator>
+  );
+};
+
+const MapStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: '#f97316' },
+        headerTintColor: '#fff',
+        headerTitleStyle: { fontWeight: '800' },
+      }}
+    >
+      <Stack.Screen 
+        name="MapScreen" 
+        component={MapScreen} 
+        options={{ title: 'Harita', headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Route" 
+        component={RouteScreen} 
+        options={{ title: 'Günlük Rota' }}
+      />
     </Stack.Navigator>
   );
 };
@@ -52,10 +76,11 @@ const AppTabs = () => {
         }}
       />
       <Tab.Screen 
-        name="Map" 
-        component={MapScreen} 
+        name="MapTab" 
+        component={MapStack} 
         options={{
           title: 'Harita',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="map" color={color} size={size} />
           ),
@@ -94,6 +119,17 @@ export default function App() {
       >
         <Stack.Screen name="WelcomeStack" component={WelcomeStack} />
         <Stack.Screen name="AppTabs" component={AppTabs} options={{ animationEnabled: false }} />
+        <Stack.Screen 
+          name="SurveyUpdate" 
+          component={SurveyScreen} 
+          options={{ 
+            headerShown: true,
+            headerStyle: { backgroundColor: '#f97316' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: '800' },
+            title: 'Anketi Güncelle'
+          }} 
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -85,7 +85,15 @@ export default function SurveyScreen({ navigation }) {
     };
 
     await saveProfile(profile);
-    navigation.getParent().navigate('AppTabs', { screen: 'Home' });
+    
+    // AppTabs'a geri dön
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.navigate('AppTabs', { screen: 'Home' });
+    } else {
+      // Parent yoksa, direct olarak navigate et
+      navigation.navigate('AppTabs', { screen: 'Home' });
+    }
   };
 
   return (

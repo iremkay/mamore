@@ -70,7 +70,7 @@ export default function HomeScreen({ navigation }) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Profil yok 😅</Text>
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Survey')}>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SurveyUpdate')}>
           <Text style={styles.buttonText}>Anketi Doldur</Text>
         </TouchableOpacity>
       </View>
@@ -86,7 +86,7 @@ export default function HomeScreen({ navigation }) {
         {/* <Text style={styles.recommendation}>{getRecommendationMessage(profile.profileType)}</Text> */}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-          <TouchableOpacity style={styles.smallBtnOutline} onPress={() => navigation.navigate('Survey')}>
+          <TouchableOpacity style={styles.smallBtnOutline} onPress={() => navigation.navigate('SurveyUpdate')}>
             <Text style={styles.smallBtnOutlineText}>Anketi Güncelle</Text>
           </TouchableOpacity>
           <TouchableOpacity 
