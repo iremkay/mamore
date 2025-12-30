@@ -1,6 +1,7 @@
 
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import { Platform, Alert } from 'react-native';
 
 const GOOGLE_PLACES_API_KEY = Constants.expoConfig?.extra?.GOOGLE_PLACES_API_KEY || 'AIzaSyChF3pXgB9CQ4HLV58OYUWRQEzEXiVO3H0';
 const NEARBY_SEARCH_RADIUS = 5000; // 5km
@@ -8,13 +9,32 @@ const NEARBY_SEARCH_RADIUS = 5000; // 5km
 
 export async function getCurrentLocation() {
   try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
+    // Android için önce izin durumunu kontrol et
+    const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+    let finalStatus = existingStatus;
+    
+    if (existingStatus !== 'granted') {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      finalStatus = status;
+    }
+    
+    if (finalStatus !== 'granted') {
       console.log('Konum izni verilmedi');
+      if (Platform.OS === 'android') {
+        Alert.alert(
+          'Konum İzni Gerekli',
+          'Uygulama çalışması için konum izni vermeniz gerekiyor. Lütfen ayarlardan izin verin.',
+          [{ text: 'Tamam' }]
+        );
+      }
       return null;
     }
 
-    const location = await Location.getCurrentPositionAsync({});
+    // Android için daha yüksek doğruluk ayarları
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Platform.OS === 'android' ? Location.Accuracy.Balanced : Location.Accuracy.Best,
+    });
+    
     return {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
