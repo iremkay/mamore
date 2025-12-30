@@ -1,9 +1,6 @@
-/**
- * Profil Tipi -> Mekan Filtreleri
- * Örn: Gamer profiline göre mekan kategorileri önemlilik sırasına göre
- */
 
-// Her profil tipi için mekan tercih haritası
+
+// Her profil tipi için mekan tercih haritası düzenledim
 const PROFILE_TO_PLACE_PREFERENCES = {
   'Peaceful Wanderer': {
     // Sakin, doğa, solo seveni
@@ -50,15 +47,14 @@ const PROFILE_TO_PLACE_PREFERENCES = {
 };
 
 /**
- * Mekanları profil tercihleriyle eşleştir ve puanlandır
- * profileEngine'deki scorePlace() ile aynı mantık
+ * mekanları eşleştirdim
  */
 export function filterPlacesByProfile(places, profileType, userProfile) {
   const preferences = PROFILE_TO_PLACE_PREFERENCES[profileType];
 
   if (!preferences) {
     console.log(`Profil tipi ${profileType} için tercihler bulunamadı`);
-    return places; // Filtresiz döndür
+    return places; // Filtresiz döndürdüm
   }
 
   return places
@@ -71,7 +67,7 @@ export function filterPlacesByProfile(places, profileType, userProfile) {
 }
 
 /**
- * Mekan uyum puanı hesapla (0-100)
+ * Mekan uyum puanı hesapladım
  */
 function calculatePlaceScore(place, preferences, userProfile) {
   let score = 50; // Base score
@@ -110,9 +106,7 @@ function calculatePlaceScore(place, preferences, userProfile) {
   return Math.min(score, 100); // Max 100
 }
 
-/**
- * Profil tipine göre "Ne aramalı?" sorusu
- */
+
 export function getRecommendationMessage(profileType) {
   const messages = {
     'Peaceful Wanderer': '🌿 Sana sakin, doğacı mekanlar ön plana alındı...',
@@ -127,7 +121,7 @@ export function getRecommendationMessage(profileType) {
 }
 
 /**
- * Mekan uyum seviyesi (UI'da gösterilecek)
+ 
  * @param {number} score 0-100
  */
 export function getCompatibilityLabel(score) {

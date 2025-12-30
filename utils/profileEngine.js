@@ -76,21 +76,21 @@ export function deriveProfileType(answers) {
 export function scorePlace(place, answers, profileKey) {
   let s = 0;
 
-  // Base score: rating
+
   if (place.rating) s += place.rating * 2;
 
-  // Mekanın hedef profili ile uyum (eğer varsa)
+  
   if (place.profiles?.includes(profileKey)) s += 6;
 
-  // Tag eşleşmesi (kullanıcı ilgi alanları)
+  
   const interests = answers.interests || [];
   const placeTags = place.tags || [];
   for (const t of interests) if (placeTags.includes(t)) s += 2;
 
-  // Vibe & damak eşleşmesi
+  // vibe damak eşleşmesi yaptırdım.
   if (answers.vibe && place.vibe === answers.vibe) s += 2;
   if (answers.food && place.food === answers.food) s += 2;
 
-  // Bonus: 100 puana normalize et
+  // Bonus: 100 puana normalize ettim
   return Math.min(Math.max(s, 0), 100);
 }

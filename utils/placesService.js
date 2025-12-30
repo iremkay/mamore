@@ -1,7 +1,3 @@
-/**
- * Google Places API Integration Service
- * Konum alma, yakındaki mekanlar, mekan detayları
- */
 
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
@@ -9,9 +5,7 @@ import Constants from 'expo-constants';
 const GOOGLE_PLACES_API_KEY = Constants.expoConfig?.extra?.GOOGLE_PLACES_API_KEY || 'AIzaSyChF3pXgB9CQ4HLV58OYUWRQEzEXiVO3H0';
 const NEARBY_SEARCH_RADIUS = 5000; // 5km
 
-/**
- * ADIM 1: Kullanıcının konumunu al
- */
+
 export async function getCurrentLocation() {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -31,11 +25,7 @@ export async function getCurrentLocation() {
   }
 }
 
-/**
- * ADIM 2: Nearby Search - Profil tiplerine göre mekanları ara
- * Örn: gamer -> "arcade, gaming cafe, board game cafe"
- *      foodie -> "restaurant, cafe, bakery"
- */
+
 export async function getNearbyPlaces(userLocation, profileType, searchTypes) {
   try {
     if (!GOOGLE_PLACES_API_KEY) {
@@ -46,7 +36,7 @@ export async function getNearbyPlaces(userLocation, profileType, searchTypes) {
     const places = [];
     const seenIds = new Set(); // Dedup için
 
-    // Her kategori için ayrı arama yapıyoruz
+    // Her kategori için ayrı arama yaptırdım
     for (const keyword of searchTypes) {
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${userLocation.latitude},${userLocation.longitude}&radius=${NEARBY_SEARCH_RADIUS}&keyword=${keyword}&key=${GOOGLE_PLACES_API_KEY}`;
 
@@ -54,7 +44,7 @@ export async function getNearbyPlaces(userLocation, profileType, searchTypes) {
       const data = await res.json();
 
       if (data.results && data.results.length > 0) {
-        // Duplicate mekanları filtrele
+        
         data.results.forEach(place => {
           if (!seenIds.has(place.place_id)) {
             seenIds.add(place.place_id);
@@ -71,46 +61,101 @@ export async function getNearbyPlaces(userLocation, profileType, searchTypes) {
   }
 }
 
-/**
- * ADIM 3: Place Details - Mekan hakkında detay bilgi
- */
+
 export async function getPlaceDetails(placeId) {
   try {
     if (!GOOGLE_PLACES_API_KEY) {
+      console.error('Google API Key eksik!');
       return null;
     }
 
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?
-      place_id=${placeId}
-      &fields=name,rating,review,formatted_address,photos,opening_hours
-      &key=${GOOGLE_PLACES_API_KEY}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,rating,user_ratings_total,reviews,formatted_address,photos,opening_hours,formatted_phone_number,website,url&key=${GOOGLE_PLACES_API_KEY}`;
 
+    console.log('Fetching place details for:', placeId);
     const response = await fetch(url.replace(/\n/g, ''));
     const data = await response.json();
 
-    return data.result || null;
+    console.log('API Response status:', data.status);
+    
+    if (data.status === 'REQUEST_DENIED') {
+      console.error('API Request Denied:', data.error_message);
+      return null;
+    }
+
+    if (data.result) {
+      console.log('Place details received:', {
+        name: data.result.name,
+        hasPhone: !!data.result.formatted_phone_number,
+        hasHours: !!data.result.opening_hours,
+        reviewCount: data.result.reviews?.length || 0,
+      });
+      
+      return {
+        name: data.result.name,
+        rating: data.result.rating || 0,
+        totalRatings: data.result.user_ratings_total || 0,
+        address: data.result.formatted_address,
+        phone: data.result.formatted_phone_number || 'Telefon bilgisi yok',
+        website: data.result.website || null,
+        mapsUrl: data.result.url,
+        openingHours: data.result.opening_hours?.weekday_text || [],
+        photos: data.result.photos || [],
+        reviews: (data.result.reviews || []).map(review => ({
+          author_name: review.author_name,
+          rating: review.rating,
+          text: review.text,
+          time: formatReviewTime(review.time),
+          profile_photo_url: review.profile_photo_url,
+        })),
+      };
+    }
+
+    console.log('No result in API response');
+    return null;
   } catch (error) {
     console.error('Place Details hatası:', error);
     return null;
   }
 }
 
+// Google'ın timestamp'ini okunabilir formata çevir
+function formatReviewTime(timestamp) {
+  if (!timestamp) return '';
+  
+  const reviewDate = new Date(timestamp * 1000);
+  const now = new Date();
+  const diffInMs = now - reviewDate;
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const diffInMonths = Math.floor(diffInDays / 30);
+  const diffInYears = Math.floor(diffInDays / 365);
+
+  if (diffInDays === 0) return 'bugün';
+  if (diffInDays === 1) return 'dün';
+  if (diffInDays < 7) return `${diffInDays} gün önce`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} hafta önce`;
+  if (diffInMonths < 12) return `${diffInMonths} ay önce`;
+  return `${diffInYears} yıl önce`;
+}
+
 /**
- * ADIM 4: Google Maps'te mekanı aç
+ * google fotoğrafları alma hala çalıştıramadım.
  */
+export function getPhotoUrl(photoReference, maxWidth = 400) {
+  if (!photoReference || !GOOGLE_PLACES_API_KEY) return null;
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+}
+
+
 export function openInGoogleMaps(place) {
   const { latitude, longitude } = place.geometry?.location || {};
   if (latitude && longitude) {
     const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-    // Gerçek uygulamada: Linking.openURL(url)
+    
     console.log('Google Maps açılacak:', url);
   }
 }
 
-/**
- * Mock & Real arasında switch
- * Google API direkt çağrısı
- */
+
 export async function placesFromGoogle(userLocation, profileType) {
   try {
     const location = userLocation || await getCurrentLocation();
@@ -129,9 +174,7 @@ export async function placesFromGoogle(userLocation, profileType) {
   }
 }
 
-/**
- * Profil tipi -> Google Places arama terimleri
- */
+
 function getSearchTypesForProfile(profileType) {
   const profileKeywords = {
     'culture': ['museum', 'gallery', 'art cafe', 'cultural center', 'theater'],
@@ -144,18 +187,17 @@ function getSearchTypesForProfile(profileType) {
   return profileKeywords[profileType] || ['cafe', 'restaurant', 'attraction'];
 }
 
-/**
- * Google Places API formatını app formatına çevir
- */
+
 function transformGooglePlaces(googlePlaces) {
   return googlePlaces.map(place => ({
     id: place.place_id,
+    place_id: place.place_id,
     name: place.name,
     address: place.vicinity,
     rating: place.rating || 0,
     latitude: place.geometry?.location?.lat,
     longitude: place.geometry?.location?.lng,
-    // App'de scoring için gerekli alanlar
+    
     tags: place.types || [],
     vibe: extractVibe(place),
     food: extractFoodType(place),
@@ -163,9 +205,7 @@ function transformGooglePlaces(googlePlaces) {
   }));
 }
 
-/**
- * Google Place type'larından "vibe" çıkart
- */
+
 function extractVibe(place) {
   const types = place.types || [];
   if (types.includes('night_club') || types.includes('bar')) return 'hareketli';
@@ -173,9 +213,7 @@ function extractVibe(place) {
   return 'orta';
 }
 
-/**
- * Google Place type'larından "food" kategorisi çıkart
- */
+
 function extractFoodType(place) {
   const types = place.types || [];
   const name = place.name?.toLowerCase() || '';

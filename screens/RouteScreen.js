@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
@@ -10,19 +10,44 @@ const ROUTE_STAGES = [
 ];
 
 export default function RouteScreen({ route, navigation }) {
-  const { route: routePlaces, profile, category, isNewRoute } = route.params || {};
+  const { route: routePlaces, profile, category, isNewRoute, onRefresh } = route.params || {};
+  const [currentRoute, setCurrentRoute] = useState(routePlaces);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollRef = useRef(null);
+
+  const handleRefreshRoute = () => {
+    setRefreshing(true);
+    // MapScreen'e geri git ve yeni rota oluşturmasını söyle
+    navigation.navigate('MapScreen', { shouldGenerateNewRoute: true });
+  };
 
   useEffect(() => {
     navigation.setOptions({
       title: 'Günlük Rota',
-      headerStyle: { backgroundColor: '#f97316' },
+      headerStyle: { backgroundColor: '#0F7C5B' },
       headerTintColor: '#fff',
       headerTitleStyle: { fontWeight: '800' },
+      headerRight: () => (
+        <TouchableOpacity 
+          onPress={handleRefreshRoute}
+          style={{ marginRight: 15, padding: 5 }}
+          disabled={refreshing}
+        >
+          {refreshing ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <MaterialCommunityIcons name="refresh" size={24} color="#fff" />
+          )}
+        </TouchableOpacity>
+      ),
     });
-  }, []);
+  }, [refreshing]);
 
-  if (!routePlaces || routePlaces.length < 3) {
+  useEffect(() => {
+    setCurrentRoute(routePlaces);
+  }, [routePlaces]);
+
+  if (!currentRoute || currentRoute.length < 3) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -60,8 +85,8 @@ export default function RouteScreen({ route, navigation }) {
   };
 
   const totalDistance = 
-    parseFloat(calculateDistance(routePlaces[0], routePlaces[1])) +
-    parseFloat(calculateDistance(routePlaces[1], routePlaces[2]));
+    parseFloat(calculateDistance(currentRoute[0], currentRoute[1])) +
+    parseFloat(calculateDistance(currentRoute[1], currentRoute[2]));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -78,7 +103,7 @@ export default function RouteScreen({ route, navigation }) {
           <Text style={styles.headerSubtitle}>Günlük Rota</Text>
           {category && (
             <View style={styles.categoryTag}>
-              <MaterialCommunityIcons name="tag" size={14} color="#f97316" />
+              <MaterialCommunityIcons name="tag" size={14} color="#0F7C5B" />
               <Text style={styles.categoryText}>{category.toUpperCase()}</Text>
             </View>
           )}
@@ -105,7 +130,7 @@ export default function RouteScreen({ route, navigation }) {
 
         {/* Rota Aşamaları */}
         <View style={styles.stagesContainer}>
-          {routePlaces.map((place, index) => {
+          {currentRoute.map((place, index) => {
             const stage = ROUTE_STAGES[index];
             const nextPlace = routePlaces[index + 1];
             const distance = nextPlace ? calculateDistance(place, nextPlace) : null;
@@ -264,7 +289,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
-    backgroundColor: '#fed7aa',
+    backgroundColor: '#E5B0A8',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -322,7 +347,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f97316',
+    backgroundColor: '#0F7C5B',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -445,7 +470,7 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f97316',
+    backgroundColor: '#0F7C5B',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,

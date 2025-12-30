@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { deriveProfileType } from '../utils/profileEngine';
-import { saveProfile } from '../utils/storage';
+import { saveProfile, loadAuth } from '../utils/storage';
+import { updateUserProfile } from '../utils/firebaseService';
 
 const OPTIONS = {
   activity: [
@@ -54,45 +55,100 @@ const OPTIONS = {
   ],
 };
 
-export default function SurveyScreen({ navigation }) {
-  const [activity, setActivity] = useState(null);
-  const [vibe, setVibe] = useState(null);
-  const [budget, setBudget] = useState(null);
-  const [food, setFood] = useState(null);
-  const [weather, setWeather] = useState(null);
-  const [group, setGroup] = useState(null);
+export default function SurveyScreen({ navigation, onSurveyComplete }) {
+  const [activity, setActivity] = useState([]);
+  const [vibe, setVibe] = useState([]);
+  const [budget, setBudget] = useState([]);
+  const [food, setFood] = useState([]);
+  const [weather, setWeather] = useState([]);
+  const [group, setGroup] = useState([]);
   const [interests, setInterests] = useState([]);
 
-  const isComplete = activity && vibe && budget && food && weather && group;
+  const isComplete = activity.length > 0 && vibe.length > 0 && budget.length > 0 && food.length > 0 && weather.length > 0 && group.length > 0;
 
   const answers = useMemo(
     () => ({ activity, vibe, budget, food, weather, group, interests }),
     [activity, vibe, budget, food, weather, group, interests]
   );
 
-  const toggleInterest = (key) => {
-    setInterests((prev) => (prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]));
+  const toggleOption = (state, setState, key) => {
+    setState((prev) => (prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]));
   };
 
   const onFinish = async () => {
     if (!isComplete) return;
 
     const derived = deriveProfileType(answers);
+    
+    // Mevcut profil verisini al
+    const { loadProfile: loadExistingProfile } = require('../utils/storage');
+    const existingProfile = await loadExistingProfile() || {};
+    
+    // Yeni anket verileriyle mevcut profili birleştir
     const profile = {
-      ...answers,
-      ...derived,
-      createdAt: new Date().toISOString(),
+      ...existingProfile, // username, email, uid gibi mevcut verileri koru
+      ...answers, // Yeni anket cevapları
+      ...derived, // profileType, profileKey, etc.
+      createdAt: existingProfile.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
+    console.log('📝 Anket tamamlandı, profil tipi:', derived.profileType);
     await saveProfile(profile);
     
-    // AppTabs'a geri dön
-    const parent = navigation.getParent();
-    if (parent) {
-      parent.navigate('AppTabs', { screen: 'Home' });
+    // Firebase'e de kaydet (eğer giriş yaptıysa)
+    const auth = await loadAuth();
+    console.log('🔍 SurveyScreen - Auth bilgisi:', { uid: auth?.uid, username: auth?.username });
+    
+    if (auth && auth.uid) {
+      const updateData = {
+        profileType: profile.profileType,
+        profileKey: profile.profileKey,
+        activity: profile.activity,
+        vibe: profile.vibe,
+        budget: profile.budget,
+        food: profile.food,
+        weather: profile.weather,
+        group: profile.group,
+        interests: profile.interests
+      };
+      console.log('🔍 SurveyScreen - Firebase\'e kaydedilecek veri:', updateData);
+      
+      const result = await updateUserProfile(auth.uid, updateData);
+      console.log('✅ Firebase kayıt sonucu:', result);
+      
+      if (result.success) {
+        console.log('✅ Profil Firebase\'e başarıyla kaydedildi');
+      } else {
+        console.error('❌ Firebase kayıt hatası:', result.error);
+        Alert.alert('Uyarı', 'Profil bilgileri yerel olarak kaydedildi ancak senkronizasyon başarısız oldu.');
+      }
     } else {
-      // Parent yoksa, direct olarak navigate et
-      navigation.navigate('AppTabs', { screen: 'Home' });
+      console.log('⚠️ Auth bilgisi yok, Firebase\'e kaydedilmedi');
+    }
+    
+    // Onboarding flow içinde miyiz?
+    if (onSurveyComplete) {
+      console.log('✅ Hoş geldin ekranına yönlendiriliyor...');
+      onSurveyComplete();
+    } else {
+      // İlk kayıt mı güncelleme mi kontrol et
+      if (existingProfile && existingProfile.profileType) {
+        // Güncelleme modu: geri dön
+        console.log('✅ Anket güncellendi, geri dönülüyor...');
+        Alert.alert('Başarılı', 'Anketiniz güncellendi!', [
+          { text: 'Tamam', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        // İlk kayıt: anasayfaya yönlendir
+        console.log('✅ İlk anket tamamlandı, anasayfaya yönlendiriliyor...');
+        Alert.alert('Hoş Geldin!', `Profil tipin: ${derived.profileType}`, [
+          { text: 'Başlayalım!', onPress: () => {
+            // WelcomeStack'ten çık, AppTabs'e geç
+            navigation.getParent()?.navigate('AppTabs', { screen: 'Home' });
+          }}
+        ]);
+      }
     }
   };
 
@@ -102,44 +158,44 @@ export default function SurveyScreen({ navigation }) {
 
       <Block title="1) Ne yapmayı daha çok seversin?">
         {OPTIONS.activity.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={activity === opt.key} onPress={() => setActivity(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={activity.includes(opt.key)} onPress={() => toggleOption(activity, setActivity, opt.key)} />
         ))}
       </Block>
 
       <Block title="2) Ortam tercihin?">
         {OPTIONS.vibe.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={vibe === opt.key} onPress={() => setVibe(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={vibe.includes(opt.key)} onPress={() => toggleOption(vibe, setVibe, opt.key)} />
         ))}
       </Block>
 
       <Block title="3) Bütçe tercihin?">
         {OPTIONS.budget.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={budget === opt.key} onPress={() => setBudget(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={budget.includes(opt.key)} onPress={() => toggleOption(budget, setBudget, opt.key)} />
         ))}
       </Block>
 
       <Block title="4) Damak zevkin?">
         {OPTIONS.food.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={food === opt.key} onPress={() => setFood(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={food.includes(opt.key)} onPress={() => toggleOption(food, setFood, opt.key)} />
         ))}
       </Block>
 
       <Block title="5) Hava durumuna göre tercihin?">
         {OPTIONS.weather.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={weather === opt.key} onPress={() => setWeather(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={weather.includes(opt.key)} onPress={() => toggleOption(weather, setWeather, opt.key)} />
         ))}
       </Block>
 
       <Block title="6) Kimlerle gezmeyi seviyorsun?">
         {OPTIONS.group.map(opt => (
-          <Option key={opt.key} label={opt.label} selected={group === opt.key} onPress={() => setGroup(opt.key)} />
+          <Option key={opt.key} label={opt.label} selected={group.includes(opt.key)} onPress={() => toggleOption(group, setGroup, opt.key)} />
         ))}
       </Block>
 
       <Block title="7) İlgi alanların (birden fazla seçebilirsin)">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {OPTIONS.interests.map(opt => (
-            <Chip key={opt.key} label={opt.label} selected={interests.includes(opt.key)} onPress={() => toggleInterest(opt.key)} />
+            <Chip key={opt.key} label={opt.label} selected={interests.includes(opt.key)} onPress={() => toggleOption(interests, setInterests, opt.key)} />
           ))}
         </View>
       </Block>
@@ -149,7 +205,7 @@ export default function SurveyScreen({ navigation }) {
         onPress={onFinish}
         disabled={!isComplete}
       >
-        <Text style={styles.buttonText}>{isComplete ? 'Profilimi Oluştur' : 'Önce tüm soruları seç 😊'}</Text>
+        <Text style={styles.buttonText}>{isComplete ? 'Profilimi Oluştur' : 'Her kategoriyi en az bir seçeneğiyle doldur 😊'}</Text>
       </TouchableOpacity>
 
       <Text style={styles.hint}>Profil ekranın da otomatik oluşacak 😌</Text>
