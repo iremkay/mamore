@@ -20,6 +20,7 @@ export default function ProfileScreen({ navigation }) {
   const [stamps, setStamps] = useState(null);
   const [showPassport, setShowPassport] = useState(false);
   const [selectedStamp, setSelectedStamp] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   useEffect(() => {
     // Header'a ayarlar butonunu ekle
@@ -635,6 +636,9 @@ export default function ProfileScreen({ navigation }) {
                     <View style={styles.stampsGrid}>
                       {Object.values(STAMP_CATEGORIES).map((category) => {
                         const count = stamps.categoryStats[category.key] || 0;
+                        const categoryStamps = stamps.stamps.filter(s => s.category === category.key);
+                        const isExpanded = expandedCategory === category.key;
+                        
                         const getStampImage = (key) => {
                           if (key === 'laptop') return require('../assets/stamps/kahve-tiryakisi.png');
                           if (key === 'nature') return require('../assets/stamps/doga-gezgini.png');
@@ -645,50 +649,72 @@ export default function ProfileScreen({ navigation }) {
                         };
                         
                         return (
-                          <View 
-                            key={category.key} 
-                            style={[
-                              styles.stampBadge,
-                              { borderColor: category.color, backgroundColor: count > 0 ? category.color + '20' : '#334155' }
-                            ]}
-                          >
-                            <TouchableOpacity onPress={() => setSelectedStamp({ image: getStampImage(category.key), name: category.name, color: category.color })}>
-                              {getStampImage(category.key) ? (
-                                <Image 
-                                  source={getStampImage(category.key)} 
-                                  style={styles.stampImage}
-                                />
-                              ) : (
-                                <Text style={styles.stampEmoji}>{category.emoji}</Text>
+                          <View key={category.key} style={{ width: '100%' }}>
+                            <TouchableOpacity
+                              onPress={() => setExpandedCategory(isExpanded ? null : category.key)}
+                              style={[
+                                styles.stampBadge,
+                                { borderColor: category.color, backgroundColor: count > 0 ? category.color + '20' : '#334155' }
+                              ]}
+                              activeOpacity={0.7}
+                            >
+                              <View style={{ alignItems: 'center' }}>
+                                {getStampImage(category.key) ? (
+                                  <Image 
+                                    source={getStampImage(category.key)} 
+                                    style={styles.stampImage}
+                                  />
+                                ) : (
+                                  <Text style={styles.stampEmoji}>{category.emoji}</Text>
+                                )}
+                              </View>
+                              <Text style={styles.stampName}>{category.name}</Text>
+                              <View style={[styles.stampCount, { backgroundColor: category.color }]}>
+                                <Text style={styles.stampCountText}>{count}</Text>
+                              </View>
+                              {count > 0 && (
+                                <Text style={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</Text>
                               )}
                             </TouchableOpacity>
-                            <Text style={styles.stampName}>{category.name}</Text>
-                            <View style={[styles.stampCount, { backgroundColor: category.color }]}>
-                              <Text style={styles.stampCountText}>{count}</Text>
-                            </View>
+
+                            {isExpanded && categoryStamps.length > 0 && (
+                              <View style={styles.categoryVisits}>
+                                <Text style={styles.categoryVisitsTitle}>📌 {category.name} Ziyaretlerim</Text>
+                                {categoryStamps.map((stamp, index) => (
+                                  <TouchableOpacity 
+                                    key={index} 
+                                    style={styles.stampHistoryItem}
+                                    onPress={() => {
+                                      const place = {
+                                        id: stamp.placeId,
+                                        place_id: stamp.placeId,
+                                        name: stamp.placeName,
+                                        address: stamp.placeAddress,
+                                        latitude: stamp.location?.latitude,
+                                        longitude: stamp.location?.longitude,
+                                      };
+                                      navigation.navigate('PlaceDetail', { place });
+                                    }}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={styles.stampHistoryEmoji}>
+                                      {category.emoji}
+                                    </Text>
+                                    <View style={styles.stampHistoryInfo}>
+                                      <Text style={styles.stampHistoryName}>{stamp.placeName}</Text>
+                                      <Text style={styles.stampHistoryDate}>
+                                        {new Date(stamp.timestamp).toLocaleDateString('tr-TR')}
+                                      </Text>
+                                    </View>
+                                    <Text style={styles.visitArrow}>›</Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            )}
                           </View>
                         );
                       })}
                     </View>
-
-                    {stamps.stamps.length > 0 && (
-                      <>
-                        <Text style={styles.stampSectionTitle}>📌 Son Ziyaretler</Text>
-                        {stamps.stamps.slice(0, 5).map((stamp, index) => (
-                          <View key={index} style={styles.stampHistoryItem}>
-                            <Text style={styles.stampHistoryEmoji}>
-                              {STAMP_CATEGORIES[stamp.category]?.emoji || '📍'}
-                            </Text>
-                            <View style={styles.stampHistoryInfo}>
-                              <Text style={styles.stampHistoryName}>{stamp.placeName}</Text>
-                              <Text style={styles.stampHistoryDate}>
-                                {new Date(stamp.timestamp).toLocaleDateString('tr-TR')}
-                              </Text>
-                            </View>
-                          </View>
-                        ))}
-                      </>
-                    )}
                   </View>
                 )}
               </>
@@ -736,7 +762,12 @@ export default function ProfileScreen({ navigation }) {
                 <Text style={styles.section}>Favori Mekanlarım</Text>
                 {(userData.favorites || []).length > 0 ? (
                   (userData.favorites || []).map(place => (
-                    <View key={place.id} style={styles.favoriteCard}>
+                    <TouchableOpacity 
+                      key={place.id} 
+                      style={styles.favoriteCard}
+                      onPress={() => navigation.navigate('PlaceDetail', { place })}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.favoriteHeader}>
                         <Text style={styles.favoriteName}>{place.name}</Text>
                         <Text style={styles.favoriteHeart}>❤️</Text>
@@ -745,11 +776,14 @@ export default function ProfileScreen({ navigation }) {
                       <Text style={styles.favoriteMeta}>⭐ {place.rating} • {place.vibe} vibe • {place.food} damak</Text>
                       <TouchableOpacity 
                         style={styles.removeFavBtn}
-                        onPress={() => toggleFavorite(place)}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(place);
+                        }}
                       >
                         <Text style={styles.removeFavBtnText}>Favorilerden Çıkar</Text>
                       </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
                   ))
                 ) : (
                   <Text style={styles.emptyText}>Henüz favori mekan yok. Önerileri keşfet! 🗺️</Text>
@@ -1078,10 +1112,11 @@ const styles = StyleSheet.create({
   stampSectionTitle: { fontSize: 16, fontWeight: '900', color: '#f1f5f9', marginBottom: 12, marginTop: 8 },
   
   stampsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  stampBadge: { width: '48%', backgroundColor: '#334155', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 2, position: 'relative' },
+  stampBadge: { width: '100%', backgroundColor: '#334155', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 2, position: 'relative' },
   stampEmoji: { fontSize: 32, marginBottom: 6 },
   stampImage: { width: 70, height: 70, marginBottom: 6, borderRadius: 35 },
   stampName: { fontSize: 11, color: '#e2e8f0', textAlign: 'center', fontWeight: '700' },
+  expandIcon: { position: 'absolute', right: 12, top: '50%', fontSize: 12, color: '#94a3b8', marginTop: -6 },
   
   stampModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
   stampModalContent: { alignItems: 'center' },
@@ -1100,6 +1135,10 @@ const styles = StyleSheet.create({
   stampHistoryInfo: { flex: 1 },
   stampHistoryName: { fontSize: 14, fontWeight: '900', color: '#f1f5f9', marginBottom: 2 },
   stampHistoryDate: { fontSize: 11, color: '#94a3b8' },
+
+  categoryVisits: { backgroundColor: '#1e293b', borderRadius: 10, padding: 12, marginTop: 8, marginBottom: 8 },
+  categoryVisitsTitle: { fontSize: 14, fontWeight: '900', color: '#fbbf24', marginBottom: 10 },
+  visitArrow: { fontSize: 24, color: '#94a3b8', marginLeft: 8 },
 
   emptyText: { textAlign: 'center', color: '#9ca3af', fontSize: 14, marginTop: 20 },
 });

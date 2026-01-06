@@ -47,8 +47,20 @@ export async function registerUser(email, password, username) {
 
     return { success: true, user };
   } catch (error) {
-    console.error('Register error:', error);
-    return { success: false, error: error.message };
+    // Kullanıcı dostu hata mesajları
+    let errorMessage = 'Kayıt oluşturulamadı';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'Bu email adresi zaten kullanılıyor';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Geçersiz email adresi';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Şifre çok zayıf. En az 6 karakter olmalı';
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'İnternet bağlantısı yok';
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -57,8 +69,28 @@ export async function loginUser(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return { success: true, user: userCredential.user };
   } catch (error) {
-    console.error('Login error:', error);
-    return { success: false, error: error.message };
+    // Kullanıcı dostu hata mesajları
+    let errorMessage = 'Giriş yapılamadı';
+    
+    const errorCode = error.code || '';
+    
+    if (errorCode.includes('user-not-found')) {
+      errorMessage = 'Kayıt bulunamadı. Lütfen önce kayıt olun';
+    } else if (errorCode.includes('wrong-password')) {
+      errorMessage = 'Şifre yanlış';
+    } else if (errorCode.includes('invalid-email')) {
+      errorMessage = 'Geçersiz email adresi';
+    } else if (errorCode.includes('user-disabled')) {
+      errorMessage = 'Bu hesap devre dışı bırakılmış';
+    } else if (errorCode.includes('too-many-requests')) {
+      errorMessage = 'Çok fazla deneme yaptınız. Lütfen daha sonra tekrar deneyin';
+    } else if (errorCode.includes('network-request-failed')) {
+      errorMessage = 'İnternet bağlantısı yok';
+    } else if (errorCode.includes('invalid-credential')) {
+      errorMessage = 'Kayıt bulunamadı. Lütfen bilgilerinizi kontrol edin';
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 

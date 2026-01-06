@@ -74,11 +74,13 @@ export default function LoginScreen({ navigation, onRegisterSuccess }) {
         }
       } else {
         setLoading(false);
-        Alert.alert('Hata', 'Profil yüklenemedi. Lütfen tekrar deneyin.');
+        Alert.alert('Bilgi', 'Kayıt bulunamadı. Lütfen önce kayıt olun.');
       }
     } else {
       setLoading(false);
-      Alert.alert('Hata', result.error || 'Giriş yapılamadı');
+      // Hata mesajını göster
+      const errorMsg = result.error || 'Giriş yapılamadı';
+      Alert.alert('Bilgi', errorMsg);
     }
   };
 
@@ -135,7 +137,8 @@ export default function LoginScreen({ navigation, onRegisterSuccess }) {
       // Kayıttan sonra direkt ankete yönlendir
       navigation.replace('WelcomeStack', { screen: 'Survey' });
     } else {
-      Alert.alert('Hata', result.error || 'Kayıt oluşturulamadı');
+      const errorMsg = result.error || 'Kayıt oluşturulamadı';
+      Alert.alert('Bilgi', errorMsg);
     }
   };
 

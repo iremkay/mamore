@@ -152,6 +152,11 @@ const ProfileStack = () => {
         options={{ title: 'Profilin' }}
       />
       <Stack.Screen 
+        name="PlaceDetail" 
+        component={PlaceDetailScreen} 
+        options={{ title: 'Mekan Detayları' }}
+      />
+      <Stack.Screen 
         name="MemoriesScreen" 
         component={MemoriesScreen} 
         options={{ title: 'Anılar' }}
